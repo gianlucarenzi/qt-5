@@ -1,0 +1,31 @@
+PER COMPILARE QT 5.12.1
+-----------------------
+
+1- Estrarre il pacchetto .xz di Qt-Embedded 5.12.1 opensource (tar xvfJ)
+
+	tar xvfJ qt-everywhere-src-5.12.1.tar.xz
+	./qt-everywhere-src-5.12.1/...
+	./..
+	./..
+
+
+2- Applicare la patch debian-patched-to-lts-5.12.1.diff
+
+	cd qt-everywhere-src-5.12.1
+	patch -p1 < ../debian-patched-to-lts-5.12.1.diff
+	...
+	...
+   
+3- Applicare la patch imx28-patch.diff
+
+	cd qt-everywhere-src-5.12.1
+	patch -p1 < ../imx28-patch.diff
+	qtbase/mkspecs/linux-iMX28/qmake.conf
+	qtbase/mkspecs/linux-iMX28/qplatformdefs.h
+   
+4- Compilare Qt:
+
+	cd qt-everywhere-src-5.12.1/qtbase/
+	./configure -v -opensource -confirm-license -release -prefix /opt/qt-5.12.1 -xplatform linux-iMX28 -no-opengl -no-openvg -qpa linuxfb -no-compile-examples -nomake tests -nomake examples -nomake tools
+	make -j8
+	make install

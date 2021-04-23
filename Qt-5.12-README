@@ -1,0 +1,246 @@
+cross-compilazione Qt LTS 5.12.1
+
+
+1- Installare il toolchain Linaro gcc-linaro-7.4.1-2019.02-x86_64_arm-linux-gnueabi ed attivarlo nella path
+
+2- scomprimere Qt 5.12.1 in una cartella (per esempio: Documents/Qt-Embedded/Qt-5/)
+
+3- copiarci un mkspec/ fatto cosi` (qtbase/linux-arm-iMX28/qmake.conf e common):
+
+		#
+		# qmake configuration for building with arm-linux-gnueabi-g++
+		#
+
+		MAKEFILE_GENERATOR      = UNIX
+		CONFIG                 += incremental
+		QMAKE_INCREMENTAL_STYLE = sublib
+
+		include(../common/linux.conf)
+		include(../common/gcc-base-unix.conf)
+		include(../common/g++-unix.conf)
+
+		# modifications to g++.conf
+		QMAKE_CC                = arm-linux-gnueabi-gcc
+		QMAKE_CXX               = arm-linux-gnueabi-g++
+		QMAKE_LINK              = arm-linux-gnueabi-g++
+		QMAKE_LINK_SHLIB        = arm-linux-gnueabi-g++
+
+		# modifications to linux.conf
+		QMAKE_AR                = arm-linux-gnueabi-ar cqs
+		QMAKE_OBJCOPY           = arm-linux-gnueabi-objcopy
+		QMAKE_NM                = arm-linux-gnueabi-nm -P
+		QMAKE_STRIP             = arm-linux-gnueabi-strip
+
+		QMAKE_CXXFLAGS          += -mcpu=arm926ej-s -march=armv5te -marm -msoft-float
+		QMAKE_LFLAGS            += -mcpu=arm926ej-s -march=armv5te -marm -msoft-float
+
+TARGET_SYSROOT e' la cartella della distribuzione utilizzata
+
+		TARGET_SYSROOT          = /home/eurek/debian-systems/armel/stretch
+
+TARGET_LIBPATH e' la cartella di dove andra' installato Qt.
+
+               Potrebbe essere dentro _SYSROOT ma siccome occorre utilizzare
+               il kit di QtCreator per la cross compilazione (TODO) sarebbe
+               meglio utilizzare una cartella accessibile anche da fuori
+               del chroot in QEMU.
+
+               Da ricordarsi durante il build del sistema embedded di aggiungerla
+               al percorso /opt/qt (se unica Qt presente nel sistema)
+               altrimenti in /opt/qt-5
+
+               In ogni caso il sistema CHROOT QEMU non puo' invocare
+               il qmake e famiglia in quanto si e' scelto di cross-compilare
+               utilizzando il kit di QtCreator per il deployment
+
+		TARGET_LIBPATH          = /home/eurek/debian-systems/armel/qt
+
+		#Helps the board find where the libraries are.
+		QMAKE_LFLAGS            += -Wl,-rpath=$$TARGET_SYSROOT/lib:$$TARGET_SYSROOT/usr/lib:$$TARGET_SYSROOT/usr/lib/arm-linux-gnueabi/:$$TARGET_LIBPATH
+		#Mandatory for dynamic linking on the target
+		QMAKE_LFLAGS            += -Wl,--dynamic-linker=$$TARGET_SYSROOT/lib/ld-linux.so.3
+
+		#Helps the board find where the libraries are.
+		load(qt_config)
+
+4- Entrare in QTDIR/qtbase e lanciare il configure:
+
+./configure -v -opensource -confirm-license -release \
+-prefix /home/eurek/debian-systems/armel/qt-5 \ <--- Potrebbe essere non necessaria in quanto gia' TARGET_LIBPATH
+-xplatform linux-arm-iMX28 \
+-qpa linuxfb -no-opengl -no-openvg \
+-no-compile-examples -nomake tests -nomake examples -nomake tools
+
+5- make && make install
+
+6- Configurare QtCreator con il toolchain, il qmake e la libreria da compilare (Kit iMX28)
+
+7- Provare a sviluppare l'applicativo.
+
+P.S.: se occorresse utilizzare Qt sul PC per velocizzare lo sviluppo occorre creare una __configurazione
+similare__ per PC ed ricompilarsi Qt ed aggiungere il kit apposito (Kit QtEmbedded 5.12 x86_64 per esempio)
+
+
+--------------------------------------------------------------------------------------------------------------------
+
+
+Per ARM in ambiente QEMU (con Debian Stretch)
+
+1- Scomprimere in una cartella Qt-5.12.[1/2/3/...] in una cartella (per esempio: $HOME/Documents/Qt-Embedded/Qt-5/)
+
+2- Applicare la patch Debian (derivata dalle patch presenti sulla distribuzione ufficiale Qt per Debian Stretch [5.7])
+
+3- Applicare la patch per iMX28 (ottimizzazione del codice compilato per arm926ej-s ed architettura armv5te
+
+4- Entrare nel QTDIR/qtbase e lanciare il configuratore:
+
+./configure -v -opensource -confirm-license -release \
+-prefix /opt/qt-5.12.1 \
+-xplatform linux-iMX28 \
+-no-opengl -no-openvg \
+-qpa linuxfb \
+-no-compile-examples \
+-nomake tests \
+-nomake examples \
+-nomake tools \
+-ssl
+
+
+Estratto del configure:
+
+Configure summary:
+
+Building on: linux-g++ (arm, CPU features: <none>)
+Building for: linux-iMX28 (arm, CPU features: <none>)
+Target compiler: gcc 6.3.0
+Configuration: cross_compile use_gold_linker enable_new_dtags largefile precompile_header shared rpath release c++11 c++14 concurrent dbus no-pkg-config reduce_exports stl
+Build options:
+  Mode ................................... release
+  Optimize release build for size ........ no
+  Building shared libraries .............. yes
+  Using C standard ....................... C11
+  Using C++ standard ..................... C++14
+  Using ccache ........................... no
+  Using gold linker ...................... yes
+  Using new DTAGS ........................ yes
+  Using precompiled headers .............. yes
+  Using LTCG ............................. no
+  Target compiler supports:
+    NEON ................................. no
+  Build parts ............................ libs
+Qt modules and options:
+  Qt Concurrent .......................... yes
+  Qt D-Bus ............................... yes
+  Qt D-Bus directly linked to libdbus .... no
+  Qt Gui ................................. yes
+  Qt Network ............................. yes
+  Qt Sql ................................. yes
+  Qt Testlib ............................. yes
+  Qt Widgets ............................. yes
+  Qt Xml ................................. yes
+Support enabled for:
+  Using pkg-config ....................... no
+  udev ................................... no
+  Using system zlib ...................... yes
+Qt Core:
+  DoubleConversion ....................... yes
+    Using system DoubleConversion ........ no
+  GLib ................................... no
+  iconv .................................. no
+  ICU .................................... yes
+  Tracing backend ........................ <none>
+  Logging backends:
+    journald ............................. no
+    syslog ............................... no
+    slog2 ................................ no
+  Using system PCRE2 ..................... no
+Qt Network:
+  getifaddrs() ........................... yes
+  IPv6 ifname ............................ yes
+  libproxy ............................... no
+  Linux AF_NETLINK ....................... yes
+  OpenSSL ................................ yes
+    Qt directly linked to OpenSSL ........ no
+  OpenSSL 1.1 ............................ yes
+  DTLS ................................... yes
+  SCTP ................................... no
+  Use system proxies ..................... yes
+Qt Gui:
+  Accessibility .......................... yes
+  FreeType ............................... yes
+    Using system FreeType ................ no
+  HarfBuzz ............................... yes
+    Using system HarfBuzz ................ no
+  Fontconfig ............................. no
+  Image formats:
+    GIF .................................. yes
+    ICO .................................. yes
+    JPEG ................................. yes
+      Using system libjpeg ............... yes
+    PNG .................................. yes
+      Using system libpng ................ yes
+  EGL .................................... no
+  OpenVG ................................. no
+  OpenGL:
+    Desktop OpenGL ....................... no
+    OpenGL ES 2.0 ........................ no
+    OpenGL ES 3.0 ........................ no
+    OpenGL ES 3.1 ........................ no
+    OpenGL ES 3.2 ........................ no
+  Vulkan ................................. no
+  Session Management ..................... yes
+Features used by QPA backends:
+  evdev .................................. yes
+  libinput ............................... no
+  INTEGRITY HID .......................... no
+  mtdev .................................. no
+  tslib .................................. yes
+  xkbcommon .............................. no
+  X11 specific:
+    XLib ................................. yes
+    XCB Xlib ............................. yes
+    EGL on X11 ........................... no
+QPA backends:
+  DirectFB ............................... no
+  EGLFS .................................. no
+  LinuxFB ................................ yes
+  VNC .................................... yes
+  Mir client ............................. no
+Qt Sql:
+  SQL item models ........................ yes
+Qt Widgets:
+  GTK+ ................................... no
+  Styles ................................. Fusion Windows
+Qt PrintSupport:
+  CUPS ................................... no
+Qt Sql Drivers:
+  DB2 (IBM) .............................. no
+  InterBase .............................. no
+  MySql .................................. no
+  OCI (Oracle) ........................... no
+  ODBC ................................... no
+  PostgreSQL ............................. no
+  SQLite2 ................................ yes
+  SQLite ................................. yes
+    Using system provided SQLite ......... no
+  TDS (Sybase) ........................... no
+Qt Testlib:
+  Tester for item models ................. yes
+
+Note: Also available for Linux: linux-clang linux-icc
+
+WARNING: Cross compiling without sysroot. Disabling pkg-config
+
+Qt is now configured for building. Just run 'make'.
+Once everything is built, you must run 'make install'.
+Qt will be installed into '/opt/qt-5.12.3'.
+
+Prior to reconfiguration, make sure you remove any leftovers from
+the previous build.
+
+
+5- make -j4 && make install
+
+...ed attendere. (con 4 cpu emulate ARM QEMU impiega quasi 8 ore)
+
+That's all folks!
